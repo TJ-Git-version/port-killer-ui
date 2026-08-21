@@ -2,7 +2,7 @@
 
 > **文件位置**：`docs/PROJECT_CONTEXT.md`
 > **用途**：供下一个 Codex 窗口（新会话）快速阅读，恢复上下文、做出正确决策。
-> 最后更新：2026-08-21 · v1.1.0 开发中（未提交）
+> 最后更新：2026-08-21 · v1.1.0 已发布
 
 ---
 
@@ -14,7 +14,7 @@
 | 版本 | 位置 | 状态 |
 | --- | --- | --- |
 | tkinter 版（旧） | `D:\myCode\port\port_killer.py` | 可用，保留不动 |
-| Electron 版（主推，v1.1.0） | `D:\myCode\port\port-killer-ui\` | v1.0.0 已发布；v1.1.0 已实现未发布 |
+| Electron 版（主推，v1.1.0） | `D:\myCode\port\port-killer-ui\` | 已发布 Release v1.1.0 |
 
 ## 2. 当前状态（速览）
 
@@ -22,11 +22,11 @@
   - 三平台安装包：Windows（Setup+Portable）、macOS（x64+arm64 的 dmg/zip）、Linux（AppImage+deb）
   - 源码包：`port-killer-ui-v1.0.0-src.zip` + GitHub 自动附带的源码 zip/tar.gz
   - 发布说明：自动读取 `CHANGELOG.md` 最新条目（含功能 + 修复）
-- 🚧 **v1.1.0 新功能已实现（未提交，需人工审核后提交发布）**：
+- ✅ **v1.1.0 已发布**（[GitHub Release](https://github.com/TJ-Git-version/port-killer-ui/releases/tag/v1.1.0)）：
   - 端口范围查询（8080-8090，单次最多 1000 个端口，表格新增「端口」列）
   - 浅色 / 深色主题切换（默认跟随系统外观，localStorage 记住选择）
   - 接入 electron-updater 应用内自动更新（NSIS 安装版支持，便携版 / Linux deb 不支持）
-- ✅ 代码已推送（v1.0.0 基线），**当前工作区有未提交的 v1.1.0 改动**
+- ✅ 代码已推送，**工作区 git 干净**
 - ✅ CI/CD 正常：`build.yml`（master 推送构建）+ `release.yml`（`v*` 标签自动发布）
 - ℹ️ 本地 `dist\` 已含 1.1.0 构建产物（Setup/Portable/blockmap/latest.yml，gitignored，仍残留旧 2.0.0 文件未删），**正式产物以 GitHub Release 为准**
 
@@ -136,7 +136,7 @@ CI 自动完成：三平台构建 → 上传产物 → `git archive` 打包源�
 
 - 远程：`origin = git@github.com:TJ-Git-version/port-killer-ui.git`（SSH）
 - 分支：`master`（跟踪 origin/master）
-- 标签：`v1.0.0` → 提交 `40394be`
+- 标签：`v1.0.0` → 提交 `40394be`；`v1.1.0` → 提交 `4b9f3cf`（端口范围查询 + 浅色/深色主题 + 应用内自动更新）
 - 提交历史（新→旧）：
   - `40394be` fix: 发布流程只上传安装包产物（排除解包目录），macOS 增加 x64 架构
   - `e541114` release: v1.0.0 首个正式版（三平台打包 + 变更日志 + 发布说明）
@@ -206,6 +206,8 @@ gh release delete v1.0.0 --repo TJ-Git-version/port-killer-ui --yes
 git push origin :refs/tags/v1.0.0
 ```
 
+
+
 
 
 
