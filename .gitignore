@@ -1,0 +1,15 @@
+# dependencies
+node_modules/
+
+# build output
+dist/
+
+# verification screenshots (regenerate with scripts/screenshot.js)
+shots/
+
+# python (tkinter version)
+__pycache__/
+*.pyc
+
+# logs
+*.log

@@ -1,0 +1,56 @@
+name: Build
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: port-killer-ui
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: port-killer-ui/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run unit tests
+        run: npm test
+
+      - name: Build Windows (NSIS + Portable)
+        if: runner.os == 'Windows'
+        run: npm run build:win
+
+      - name: Build macOS (dmg + zip)
+        if: runner.os == 'macOS'
+        run: npm run build:mac
+
+      - name: Build Linux (AppImage + deb)
+        if: runner.os == 'Linux'
+        run: npm run build:linux
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: portkiller-${{ matrix.os }}
+          path: |
+            port-killer-ui/dist/*.exe
+            port-killer-ui/dist/*.dmg
+            port-killer-ui/dist/*.zip
+            port-killer-ui/dist/*.AppImage
+            port-killer-ui/dist/*.deb
+            port-killer-ui/dist/*.yml
+          if-no-files-found: warn

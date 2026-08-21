@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data:;">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>端口占用关闭工具</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app">
+
+    <header class="app-header">
+      <div class="brand">
+        <div class="logo" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="9"></circle>
+            <circle cx="12" cy="12" r="4.5"></circle>
+            <path d="M12 3v3M12 18v3M3 12h3M18 12h3"></path>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <h1>端口占用关闭工具</h1>
+          <p>Port Occupancy Killer · v2.0</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <span id="adminBadge" class="admin-badge"><i class="dot"></i>检测中…</span>
+        <button id="relaunchAdminBtn" class="btn btn-ghost btn-sm" title="权限不足时，以管理员身份重启本工具">以管理员身份重启</button>
+      </div>
+    </header>
+
+    <main>
+      <section class="card search-card">
+        <div class="search-row">
+          <label class="field">
+            <span class="field-label">端口号</span>
+            <div class="input-wrap">
+              <svg class="input-icon" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="7"></circle>
+                <path d="m20 20-3.5-3.5"></path>
+              </svg>
+              <input id="portInput" type="text" inputmode="numeric" maxlength="5"
+                     placeholder="例如 8080" autocomplete="off" spellcheck="false">
+            </div>
+          </label>
+          <button id="queryBtn" class="btn btn-primary">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="7"></circle>
+              <path d="m20 20-3.5-3.5"></path>
+            </svg>
+            查询占用
+          </button>
+          <button id="clearBtn" class="btn btn-ghost">清空</button>
+        </div>
+        <div class="chips" id="chipBar">
+          <span class="chips-label">常用端口</span>
+          <button class="chip" data-port="80">80 · HTTP</button>
+          <button class="chip" data-port="443">443 · HTTPS</button>
+          <button class="chip" data-port="3000">3000</button>
+          <button class="chip" data-port="5173">5173 · Vite</button>
+          <button class="chip" data-port="3306">3306 · MySQL</button>
+          <button class="chip" data-port="6379">6379 · Redis</button>
+          <button class="chip" data-port="27017">27017 · MongoDB</button>
+        </div>
+      </section>
+
+      <section class="card results-card">
+        <div class="results-header">
+          <div class="results-title">
+            <h2>占用进程</h2>
+            <span id="resultCount" class="badge">未查询</span>
+          </div>
+          <div class="results-actions">
+            <span id="selectedCount" class="selected-text">已选 0 个</span>
+            <button id="selectAllBtn" class="btn btn-ghost btn-sm">全选</button>
+            <button id="deselectAllBtn" class="btn btn-ghost btn-sm">取消全选</button>
+            <button id="killBtn" class="btn btn-danger" disabled>
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 12h18M12 3v18"></path>
+              </svg>
+              关闭选中进程
+            </button>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table class="process-table">
+            <thead>
+              <tr>
+                <th class="col-check"></th>
+                <th class="col-pid">PID</th>
+                <th>进程名</th>
+                <th class="col-proto">协议</th>
+                <th>本地地址</th>
+                <th class="col-state">状态</th>
+              </tr>
+            </thead>
+            <tbody id="processBody"></tbody>
+          </table>
+        </div>
+
+        <div id="emptyState" class="empty-state">
+          <svg class="empty-art" viewBox="0 0 200 140" width="220" height="150" fill="none">
+            <rect x="30" y="28" width="140" height="92" rx="16" fill="#1a2030" stroke="#2a3350" stroke-width="2"/>
+            <circle cx="68" cy="62" r="9" fill="none" stroke="#4c5680" stroke-width="3"/>
+            <circle cx="68" cy="62" r="3.5" fill="#6d7cff"/>
+            <path d="M84 62h26M120 62h14" stroke="#4c5680" stroke-width="3" stroke-linecap="round"/>
+            <circle cx="68" cy="92" r="5" fill="#2a3350"/>
+            <path d="M84 92h40M136 92h10" stroke="#3a4468" stroke-width="3" stroke-linecap="round"/>
+            <path d="M52 108h46M110 108h40" stroke="#3a4468" stroke-width="3" stroke-linecap="round"/>
+            <path d="M100 10l6 10 10 6-10 6-6 10-6-10-10-6 10-6z" fill="#6d7cff" opacity="0.85"/>
+          </svg>
+          <p class="empty-title">还没有查询结果</p>
+          <p class="empty-desc">输入端口号并点击「查询占用」，即可查看占用该端口的进程</p>
+        </div>
+
+        <div id="loadingOverlay" class="loading-overlay hidden">
+          <div class="spinner" aria-hidden="true"></div>
+          <p>正在查询端口占用情况…</p>
+        </div>
+      </section>
+
+      <footer class="app-footer">
+        <span>提示：强制结束进程不会保存未保存的数据，请谨慎操作。</span>
+        <span>系统关键进程（如 PID 4 System）请勿关闭。</span>
+      </footer>
+    </main>
+  </div>
+
+  <div id="toastContainer" class="toast-container" aria-live="polite"></div>
+
+  <div id="confirmModal" class="modal-backdrop hidden" role="dialog" aria-modal="true">
+    <div class="modal">
+      <div class="modal-icon danger" aria-hidden="true">!</div>
+      <h3 class="modal-title">确认操作</h3>
+      <p id="confirmText" class="modal-text">确定要强制结束选中的进程吗？</p>
+      <div class="modal-actions">
+        <button id="modalCancelBtn" class="btn btn-ghost">取消</button>
+        <button id="modalOkBtn" class="btn btn-danger">强制关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>
