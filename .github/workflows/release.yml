@@ -54,7 +54,14 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: dist-${{ matrix.os }}
-          path: port-killer-ui/dist/*
+          path: |
+            port-killer-ui/dist/*.exe
+            port-killer-ui/dist/*.dmg
+            port-killer-ui/dist/*.zip
+            port-killer-ui/dist/*.AppImage
+            port-killer-ui/dist/*.deb
+            port-killer-ui/dist/*.yml
+            port-killer-ui/dist/*.blockmap
           if-no-files-found: error
 
   release:
