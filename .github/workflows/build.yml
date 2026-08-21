@@ -15,6 +15,8 @@ jobs:
     defaults:
       run:
         working-directory: port-killer-ui
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
     steps:
       - uses: actions/checkout@v4
 
@@ -32,15 +34,15 @@ jobs:
 
       - name: Build Windows (NSIS + Portable)
         if: runner.os == 'Windows'
-        run: npm run build:win
+        run: npm run build:win -- --publish never
 
       - name: Build macOS (dmg + zip)
         if: runner.os == 'macOS'
-        run: npm run build:mac
+        run: npm run build:mac -- --publish never
 
       - name: Build Linux (AppImage + deb)
         if: runner.os == 'Linux'
-        run: npm run build:linux
+        run: npm run build:linux -- --publish never
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4

@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: '要发布的 git 标签（例如 v2.0.0），留空则使用当前 ref'
+        description: '要发布的 git 标签（例如 v1.0.0），留空则使用当前 ref'
         required: false
 
 jobs:
@@ -64,6 +64,8 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v4
+
       - name: Determine release tag
         id: tag
         shell: bash
@@ -78,11 +80,21 @@ jobs:
           path: release-assets
           merge-multiple: true
 
+      - name: Package source archive (zip)
+        shell: bash
+        run: |
+          git archive --format=zip -o "release-assets/port-killer-ui-${{ steps.tag.outputs.tag }}-src.zip" HEAD
+
+      - name: Extract latest changelog entry as release notes
+        shell: bash
+        run: |
+          awk '/^## \[/{ if (found) exit } /^## \[/{ found=1 } found' port-killer-ui/CHANGELOG.md > release-body.md
+
       - name: Create / update GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.tag.outputs.tag }}
           files: release-assets/**
+          body_path: release-body.md
           draft: false
           prerelease: false
-          generate_release_notes: true

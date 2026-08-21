@@ -10,7 +10,7 @@
 - **次版本**：向后兼容的新功能
 - **修订号**：向后兼容的 bug 修复
 
-示例：`2.0.0` → `2.0.1`（修 bug）→ `2.1.0`（新功能）→ `3.0.0`（重大变更）
+示例：`1.0.0` → `1.0.1`（修 bug）→ `1.1.0`（新功能）→ `1.0.0`（重大变更）
 
 ## 发布流程（三步）
 
@@ -61,7 +61,7 @@ GitHub 还会自动为每个 Release 附带**源码包**（Source code zip / tar
 
 ```powershell
 # 需要 gh CLI 且已登录（gh auth login）
-gh release create v2.0.0 dist\PortKiller-2.0.0-Setup-x64.exe dist\PortKiller-2.0.0-Portable-x64.exe --title "v2.0.0" --notes "发布说明"
+gh release create v1.0.0 dist\PortKiller-1.0.0-Setup-x64.exe dist\PortKiller-1.0.0-Portable-x64.exe --title "v1.0.0" --notes "发布说明"
 ```
 
 ## 进阶建议

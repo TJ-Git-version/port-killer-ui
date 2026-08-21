@@ -77,10 +77,10 @@ npm run build:linux    # Linux：AppImage + deb（需在 Linux 上执行）
 
 | 文件 | 说明 |
 | --- | --- |
-| `PortKiller-2.0.0-Setup-x64.exe` | Windows 安装程序（NSIS，可自选安装目录） |
-| `PortKiller-2.0.0-Portable-x64.exe` | Windows 便携版（免安装，双击即用） |
-| `PortKiller-2.0.0.dmg` / `.zip` | macOS 安装镜像 / 压缩包 |
-| `PortKiller-2.0.0.AppImage` / `.deb` | Linux 免安装包 / Debian 系安装包 |
+| `PortKiller-1.0.0-Setup-x64.exe` | Windows 安装程序（NSIS，可自选安装目录） |
+| `PortKiller-1.0.0-Portable-x64.exe` | Windows 便携版（免安装，双击即用） |
+| `PortKiller-1.0.0.dmg` / `.zip` | macOS 安装镜像 / 压缩包 |
+| `PortKiller-1.0.0.AppImage` / `.deb` | Linux 免安装包 / Debian 系安装包 |
 
 ### 跨平台说明
 
