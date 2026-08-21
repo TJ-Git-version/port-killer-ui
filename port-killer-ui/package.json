@@ -1,6 +1,6 @@
 {
   "name": "port-killer-ui",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "端口占用关闭工具 - 跨平台桌面应用（Windows / macOS / Linux）",
   "main": "main.js",
   "author": "",
@@ -96,5 +96,9 @@
     }
   },
   "repository": "https://github.com/TJ-Git-version/port-killer-ui",
-  "homepage": "https://github.com/TJ-Git-version/port-killer-ui"
+  "homepage": "https://github.com/TJ-Git-version/port-killer-ui",
+  "dependencies": {
+    "electron-updater": "^6.8.9"
+  }
 }
+

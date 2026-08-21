@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta http-equiv="Content-Security-Policy"
@@ -22,10 +22,27 @@
         </div>
         <div class="brand-text">
           <h1>端口占用关闭工具</h1>
-          <p>Port Occupancy Killer · v1.0.0</p>
+          <p>Port Occupancy Killer · <span id="versionText">v1.0.0</span></p>
         </div>
       </div>
       <div class="header-actions">
+        <span id="updateStatus" class="update-status hidden"></span>
+        <button id="updateBtn" class="btn btn-ghost btn-sm hidden" title="检查 GitHub Release 是否有新版本">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 12a8 8 0 1 1-2.34-5.66"></path>
+            <path d="M20 4v4h-4"></path>
+          </svg>
+          检查更新
+        </button>
+        <button id="themeToggle" class="btn btn-icon btn-ghost" title="切换浅色 / 深色主题" aria-label="切换主题">
+          <svg class="icon-sun" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="4.5"></circle>
+            <path d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M19.1 4.9l-1.8 1.8M6.7 17.3l-1.8 1.8"></path>
+          </svg>
+          <svg class="icon-moon" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20.5 14.2A8.5 8.5 0 0 1 9.8 3.5a8.5 8.5 0 1 0 10.7 10.7z"></path>
+          </svg>
+        </button>
         <span id="adminBadge" class="admin-badge"><i class="dot"></i>检测中…</span>
         <button id="relaunchAdminBtn" class="btn btn-ghost btn-sm" title="权限不足时，以管理员身份重启本工具">以管理员身份重启</button>
       </div>
@@ -41,8 +58,8 @@
                 <circle cx="11" cy="11" r="7"></circle>
                 <path d="m20 20-3.5-3.5"></path>
               </svg>
-              <input id="portInput" type="text" inputmode="numeric" maxlength="5"
-                     placeholder="例如 8080" autocomplete="off" spellcheck="false">
+              <input id="portInput" type="text" inputmode="numeric" maxlength="15"
+                     placeholder="例如 8080 或 8080-8090" autocomplete="off" spellcheck="false">
             </div>
           </label>
           <button id="queryBtn" class="btn btn-primary">
@@ -63,6 +80,7 @@
           <button class="chip" data-port="3306">3306 · MySQL</button>
           <button class="chip" data-port="6379">6379 · Redis</button>
           <button class="chip" data-port="27017">27017 · MongoDB</button>
+          <button class="chip" data-range="8000-8100">8000-8100 · 范围</button>
         </div>
       </section>
 
@@ -94,6 +112,7 @@
                 <th>进程名</th>
                 <th class="col-proto">协议</th>
                 <th>本地地址</th>
+                <th class="col-port">端口</th>
                 <th class="col-state">状态</th>
               </tr>
             </thead>
@@ -103,17 +122,17 @@
 
         <div id="emptyState" class="empty-state">
           <svg class="empty-art" viewBox="0 0 200 140" width="220" height="150" fill="none">
-            <rect x="30" y="28" width="140" height="92" rx="16" fill="#1a2030" stroke="#2a3350" stroke-width="2"/>
-            <circle cx="68" cy="62" r="9" fill="none" stroke="#4c5680" stroke-width="3"/>
-            <circle cx="68" cy="62" r="3.5" fill="#6d7cff"/>
-            <path d="M84 62h26M120 62h14" stroke="#4c5680" stroke-width="3" stroke-linecap="round"/>
-            <circle cx="68" cy="92" r="5" fill="#2a3350"/>
-            <path d="M84 92h40M136 92h10" stroke="#3a4468" stroke-width="3" stroke-linecap="round"/>
-            <path d="M52 108h46M110 108h40" stroke="#3a4468" stroke-width="3" stroke-linecap="round"/>
-            <path d="M100 10l6 10 10 6-10 6-6 10-6-10-10-6 10-6z" fill="#6d7cff" opacity="0.85"/>
+            <rect class="ea-card" x="30" y="28" width="140" height="92" rx="16" stroke-width="2"/>
+            <circle class="ea-ring" cx="68" cy="62" r="9" fill="none" stroke-width="3"/>
+            <circle class="ea-core" cx="68" cy="62" r="3.5"/>
+            <path class="ea-beam" d="M84 62h26M120 62h14" stroke-width="3" stroke-linecap="round"/>
+            <circle class="ea-ping" cx="68" cy="92" r="5"/>
+            <path class="ea-line" d="M84 92h40M136 92h10" stroke-width="3" stroke-linecap="round"/>
+            <path class="ea-line" d="M52 108h46M110 108h40" stroke-width="3" stroke-linecap="round"/>
+            <path class="ea-star" d="M100 10l6 10 10 6-10 6-6 10-6-10-10-6 10-6z" opacity="0.85"/>
           </svg>
           <p class="empty-title">还没有查询结果</p>
-          <p class="empty-desc">输入端口号并点击「查询占用」，即可查看占用该端口的进程</p>
+          <p class="empty-desc">输入端口号或范围（如 8080-8090）并点击「查询占用」，即可查看占用对应端口的进程</p>
         </div>
 
         <div id="loadingOverlay" class="loading-overlay hidden">

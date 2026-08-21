@@ -2,7 +2,7 @@
 
 > **文件位置**：`docs/PROJECT_CONTEXT.md`
 > **用途**：供下一个 Codex 窗口（新会话）快速阅读，恢复上下文、做出正确决策。
-> 最后更新：2026-08-21 · 由当前会话生成
+> 最后更新：2026-08-21 · v1.1.0 开发中（未提交）
 
 ---
 
@@ -14,7 +14,7 @@
 | 版本 | 位置 | 状态 |
 | --- | --- | --- |
 | tkinter 版（旧） | `D:\myCode\port\port_killer.py` | 可用，保留不动 |
-| Electron 版（主推，v1.0.0） | `D:\myCode\port\port-killer-ui\` | 已发布 Release v1.0.0 |
+| Electron 版（主推，v1.1.0） | `D:\myCode\port\port-killer-ui\` | v1.0.0 已发布；v1.1.0 已实现未发布 |
 
 ## 2. 当前状态（速览）
 
@@ -22,9 +22,13 @@
   - 三平台安装包：Windows（Setup+Portable）、macOS（x64+arm64 的 dmg/zip）、Linux（AppImage+deb）
   - 源码包：`port-killer-ui-v1.0.0-src.zip` + GitHub 自动附带的源码 zip/tar.gz
   - 发布说明：自动读取 `CHANGELOG.md` 最新条目（含功能 + 修复）
-- ✅ 代码已推送，**工作区 git 干净**
+- 🚧 **v1.1.0 新功能已实现（未提交，需人工审核后提交发布）**：
+  - 端口范围查询（8080-8090，单次最多 1000 个端口，表格新增「端口」列）
+  - 浅色 / 深色主题切换（默认跟随系统外观，localStorage 记住选择）
+  - 接入 electron-updater 应用内自动更新（NSIS 安装版支持，便携版 / Linux deb 不支持）
+- ✅ 代码已推送（v1.0.0 基线），**当前工作区有未提交的 v1.1.0 改动**
 - ✅ CI/CD 正常：`build.yml`（master 推送构建）+ `release.yml`（`v*` 标签自动发布）
-- ⚠️ 本地 `dist\` 是旧的 2.0.0 产物（gitignored），**正式产物以 GitHub Release 为准**
+- ℹ️ 本地 `dist\` 已含 1.1.0 构建产物（Setup/Portable/blockmap/latest.yml，gitignored，仍残留旧 2.0.0 文件未删），**正式产物以 GitHub Release 为准**
 
 ## 3. 目录结构
 
@@ -60,7 +64,7 @@ D:\myCode\port\
     │   ├── screenshot.js         # 界面截图（输出 shots\）
     │   └── verify-packaged.js    # 打包版应用验证
     ├── shots\                    # 截图（gitignored）
-    └── dist\                     # 构建产物（gitignored，本地为旧 2.0.0）
+    └── dist\                     # 构建产物（gitignored，已含 1.1.0，残留旧 2.0.0 未删）
 ```
 
 ## 4. 环境与工具
@@ -158,6 +162,12 @@ CI 自动完成：三平台构建 → 上传产物 → `git archive` 打包源�
 8. **AGENTS.md 约束**：禁止批量删除文件（`del /s`、`rd /s`、`Remove-Item -Recurse`、`rm -rf` 均禁用），
    删除只能一次一个明确路径；生成代码默认不 git 提交需人工审核（但用户多次明确要求提交时，以用户最新指示为准）。
 
+9. **electron-updater 注意事项**：
+   - `app-update.yml` 只在构建 **NSIS 目标** 时生成（`--dir` / 仅 portable 不会生成），CI 的 `--publish never` 也会生成（electron-builder 自动回退到 repository 的 GitHub 配置）
+   - 便携版（portable）无安装器、Linux deb 版不支持自动更新，运行时用 `process.env.PORTABLE_EXECUTABLE_FILE` / `process.env.APPIMAGE` 判断并隐藏更新入口
+   - electron-updater 必须放在 `dependencies`（不能放 devDependencies），打包时才会被包含进 asar（已确认 dist/win-unpacked 的 app.asar 内含 electron-updater）
+10. **JS 模板字符串转义坑**：用 Node 脚本批量改源码时，若把目标代码放在模板字符串里，`\d` 会被模板字符串求值成 `d`，必须写成 `\\d`；改完后务必 `node --check` + 实跑验证
+
 ## 10. 关键设计决策与约定
 
 - **架构安全**：系统命令（netstat/tasklist/taskkill）只在 `main.js` 主进程执行；`preload.js` 用 contextBridge
@@ -170,7 +180,7 @@ CI 自动完成：三平台构建 → 上传产物 → `git archive` 打包源�
 
 ## 11. 待办 / 下一步建议（候选，未实施）
 
-1. **electron-updater 自动更新**：`latest.yml` / `latest-mac.yml` / `latest-linux.yml` 已在 Release 中，接入后应用内可自动升级。
+1. ✅ ~~electron-updater 自动更新~~（v1.1.0 已接入：NSIS 安装版支持应用内更新；便携版 / Linux deb 不支持）
 2. **代码签名**：Windows（Azure Trusted Signing / 商业证书）+ Apple Developer 签名，消除安全提示。
 3. **升级 Actions 到 v5**（checkout/setup-node/upload-artifact），消除 Node 20 弃用警告。
 4. **master → main 改名**（GitHub 默认惯例，可选，需同步 remote 分支）。
@@ -195,3 +205,7 @@ gh release create v1.0.1 dist\*.exe --title "v1.0.1" --notes "说明"
 gh release delete v1.0.0 --repo TJ-Git-version/port-killer-ui --yes
 git push origin :refs/tags/v1.0.0
 ```
+
+
+
+

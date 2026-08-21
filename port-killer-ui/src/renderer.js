@@ -27,18 +27,29 @@ const els = {
   modalCancelBtn: document.getElementById('modalCancelBtn'),
   adminBadge: document.getElementById('adminBadge'),
   relaunchAdminBtn: document.getElementById('relaunchAdminBtn'),
+  versionText: document.getElementById('versionText'),
+  themeToggle: document.getElementById('themeToggle'),
+  updateBtn: document.getElementById('updateBtn'),
+  updateStatus: document.getElementById('updateStatus'),
 };
 
-let results = [];      // [{ pid, name, proto, localAddr, state }]
+const THEME_KEY = 'portkiller-theme';
+const MAX_RANGE_PORTS = 1000;
+
+let results = [];      // [{ pid, port, name, proto, localAddr, state }]
 let checked = new Set(); // 已勾选的 pid
-let lastPort = null;
+let lastQuery = null;  // { type: 'single'|'range', label }
 let modalResolve = null;
+let updateState = 'idle'; // idle | checking | available | downloading | downloaded
 
 init();
 
 function init() {
+  initTheme();
   bindEvents();
   checkAdmin();
+  loadAppInfo();
+  bindUpdateEvents();
 }
 
 /* ---------------- 事件绑定 ---------------- */
@@ -51,14 +62,15 @@ function bindEvents() {
   els.clearBtn.addEventListener('click', clearAll);
   els.chipBar.addEventListener('click', (e) => {
     const chip = e.target.closest('.chip');
-    if (chip) {
-      els.portInput.value = chip.dataset.port;
-      query();
-    }
+    if (!chip) return;
+    els.portInput.value = chip.dataset.range || chip.dataset.port;
+    query();
   });
   els.selectAllBtn.addEventListener('click', () => setAll(true));
   els.deselectAllBtn.addEventListener('click', () => setAll(false));
   els.killBtn.addEventListener('click', requestKill);
+  els.themeToggle.addEventListener('click', toggleTheme);
+  els.updateBtn.addEventListener('click', onCheckUpdate);
 
   els.processBody.addEventListener('change', (e) => {
     const cb = e.target.closest('.row-check');
@@ -96,27 +108,66 @@ function bindEvents() {
   els.relaunchAdminBtn.addEventListener('click', relaunchAdmin);
 }
 
+/* ---------------- 主题 ---------------- */
+
+function initTheme() {
+  const saved = localStorage.getItem(THEME_KEY);
+  let theme = saved;
+  if (theme !== 'light' && theme !== 'dark') {
+    theme = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+  }
+  applyTheme(theme);
+}
+
+function applyTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  try { localStorage.setItem(THEME_KEY, theme); } catch (err) { /* 忽略 */ }
+}
+
+function toggleTheme() {
+  const next = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
+  applyTheme(next);
+}
+
 /* ---------------- 查询 ---------------- */
 
-function validatePortInput() {
-  const s = els.portInput.value.trim();
-  if (!/^\d+$/.test(s)) return null;
-  const n = Number(s);
-  return n >= 1 && n <= 65535 ? n : null;
+/** 解析查询输入：支持单端口（8080）或范围（8080-8090），非法返回 { ok:false, message } */
+function parseQueryInput(text) {
+  const s = String(text == null ? '' : text).trim();
+  if (/^\d+$/.test(s)) {
+    const n = Number(s);
+    if (n >= 1 && n <= 65535) return { ok: true, type: 'single', port: n, label: String(n) };
+    return { ok: false, message: '端口号无效，请输入 1~65535 之间的整数。' };
+  }
+  if (/^\d+\s*-\s*\d+$/.test(s)) {
+    const parts = s.split('-').map((x) => Number(x.trim()));
+    const start = parts[0];
+    const end = parts[1];
+    if (start < 1 || end > 65535 || start > end) {
+      return { ok: false, message: '端口范围无效，起止需在 1~65535 之间且起始不大于结束。' };
+    }
+    if (end - start + 1 > MAX_RANGE_PORTS) {
+      return { ok: false, message: `端口范围过大，单次最多查询 ${MAX_RANGE_PORTS} 个端口。` };
+    }
+    return { ok: true, type: 'range', start, end, label: `${start}-${end}` };
+  }
+  return { ok: false, message: '请输入端口号（如 8080）或范围（如 8080-8090）。' };
 }
 
 async function query() {
-  const port = validatePortInput();
-  if (port === null) {
-    toast('请输入 1~65535 之间的端口号', 'error');
+  const parsed = parseQueryInput(els.portInput.value);
+  if (!parsed.ok) {
+    toast(parsed.message || '输入无效', 'error');
     els.portInput.focus();
     return;
   }
   setLoading(true);
   els.loadingOverlay.querySelector('p').textContent = '正在查询端口占用情况…';
-  lastPort = port;
+  lastQuery = { type: parsed.type, label: parsed.label };
   try {
-    const res = await api.queryPort(port);
+    const res = parsed.type === 'single'
+      ? await api.queryPort(parsed.port)
+      : await api.queryPortRange(`${parsed.start}-${parsed.end}`);
     if (!res.ok) {
       toast(res.error || '查询失败', 'error');
       results = [];
@@ -127,7 +178,8 @@ async function query() {
     checked.clear();
     render();
     const extra = res.skipped ? `（另有 ${res.skipped} 条残留连接已忽略）` : '';
-    toast(`端口 ${res.port} 共发现 ${res.results.length} 个进程${extra}`, res.results.length ? 'success' : 'info');
+    const scope = parsed.type === 'single' ? `端口 ${res.port}` : `范围 ${res.start}-${res.end}`;
+    toast(`${scope} 共发现 ${res.results.length} 个进程${extra}`, res.results.length ? 'success' : 'info');
   } catch (err) {
     toast('查询失败：' + err.message, 'error');
   } finally {
@@ -138,7 +190,7 @@ async function query() {
 function clearAll() {
   results = [];
   checked.clear();
-  lastPort = null;
+  lastQuery = null;
   els.portInput.value = '';
   render();
 }
@@ -149,7 +201,9 @@ function render() {
   els.processBody.innerHTML = '';
   if (results.length === 0) {
     els.emptyState.classList.remove('hidden');
-    els.resultCount.textContent = lastPort ? `端口 ${lastPort} 无占用` : '未查询';
+    els.resultCount.textContent = lastQuery
+      ? `${lastQuery.type === 'range' ? '范围' : '端口'} ${lastQuery.label} 无占用`
+      : '未查询';
     updateSummary();
     return;
   }
@@ -168,6 +222,7 @@ function render() {
       <td><span class="name-cell"><span class="proc-avatar">${escapeHtml(avatar)}</span>${escapeHtml(r.name)}</span></td>
       <td><span class="pill proto ${escapeHtml(r.proto.toLowerCase())}">${escapeHtml(r.proto)}</span></td>
       <td class="addr-cell"><code>${escapeHtml(r.localAddr)}</code></td>
+      <td class="port-cell">${escapeHtml(r.port)}</td>
       <td><span class="pill state ${stateClass(r.state)}">${escapeHtml(r.state)}</span></td>`;
     frag.appendChild(tr);
   });
@@ -260,6 +315,21 @@ function openModal(text, okLabel, kind) {
   });
 }
 
+/** 若已有弹窗打开，等待其关闭后再弹新窗（用于更新提示等异步场景） */
+function openModalWhenFree(text, okLabel, kind) {
+  if (els.confirmModal.classList.contains('hidden')) {
+    return openModal(text, okLabel, kind);
+  }
+  return new Promise((resolve) => {
+    const timer = setInterval(() => {
+      if (els.confirmModal.classList.contains('hidden')) {
+        clearInterval(timer);
+        openModal(text, okLabel, kind).then(resolve);
+      }
+    }, 200);
+  });
+}
+
 function closeModal(result) {
   if (!modalResolve) return;
   const resolve = modalResolve;
@@ -288,6 +358,114 @@ async function relaunchAdmin() {
     toast('已请求以管理员身份重启…', 'info');
   } catch (err) {
     toast('启动失败：' + err.message, 'error');
+  }
+}
+
+/* ---------------- 应用信息与自动更新 ---------------- */
+
+async function loadAppInfo() {
+  try {
+    const info = await api.getAppInfo();
+    if (info && info.version) els.versionText.textContent = 'v' + info.version;
+    if (info && info.updateSupported) els.updateBtn.classList.remove('hidden');
+  } catch (err) {
+    // 忽略：开发环境或旧版主进程
+  }
+}
+
+function setUpdateStatus(text, cls) {
+  els.updateStatus.textContent = text || '';
+  els.updateStatus.className = 'update-status' + (text ? (cls ? ' ' + cls : '') : ' hidden');
+}
+
+async function onCheckUpdate() {
+  if (updateState === 'downloading') return;
+  setUpdateStatus('正在检查更新…');
+  try {
+    const res = await api.checkForUpdates();
+    if (!res.ok) {
+      setUpdateStatus('');
+      toast(res.error || '无法检查更新', 'error');
+    }
+  } catch (err) {
+    setUpdateStatus('');
+    toast('检查更新失败：' + err.message, 'error');
+  }
+}
+
+function bindUpdateEvents() {
+  if (!api.onUpdateEvent) return;
+  api.onUpdateEvent((payload) => {
+    switch (payload.type) {
+      case 'checking':
+        updateState = 'checking';
+        setUpdateStatus('正在检查更新…');
+        break;
+      case 'available':
+        updateState = 'available';
+        setUpdateStatus(`发现新版本 v${payload.version}`);
+        toast(`发现新版本 v${payload.version}，是否立即下载？`, 'info');
+        promptDownload(payload.version);
+        break;
+      case 'not-available':
+        updateState = 'idle';
+        setUpdateStatus('');
+        toast(`当前已是最新版本${payload.version ? ' v' + payload.version : ''}`, 'success');
+        break;
+      case 'progress':
+        updateState = 'downloading';
+        setUpdateStatus(`正在下载更新… ${payload.percent}%`, 'downloading');
+        break;
+      case 'downloaded':
+        updateState = 'downloaded';
+        setUpdateStatus(`新版本 v${payload.version} 已就绪`, 'downloading');
+        promptInstall();
+        break;
+      case 'error':
+        updateState = 'idle';
+        setUpdateStatus('更新失败', 'error');
+        toast('更新失败：' + (payload.message || '未知错误'), 'error');
+        break;
+    }
+  });
+}
+
+async function promptDownload(version) {
+  const ok = await openModalWhenFree(
+    `发现新版本 v${version}，是否立即下载并安装？`,
+    '立即下载',
+    'info'
+  );
+  if (!ok) {
+    setUpdateStatus(`发现新版本 v${version}，可稍后点击「检查更新」重新下载`);
+    return;
+  }
+  try {
+    const res = await api.downloadUpdate();
+    if (!res.ok) {
+      setUpdateStatus('');
+      toast(res.error || '下载更新失败', 'error');
+    }
+  } catch (err) {
+    setUpdateStatus('');
+    toast('下载更新失败：' + err.message, 'error');
+  }
+}
+
+async function promptInstall() {
+  const ok = await openModalWhenFree(
+    '新版本已下载完成，是否立即重启并安装？',
+    '重启安装',
+    'info'
+  );
+  if (!ok) {
+    setUpdateStatus('新版本已下载，将在退出应用时自动安装');
+    return;
+  }
+  try {
+    await api.installUpdate();
+  } catch (err) {
+    toast('安装失败：' + err.message, 'error');
   }
 }
 

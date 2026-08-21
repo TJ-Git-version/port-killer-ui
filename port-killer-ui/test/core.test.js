@@ -100,6 +100,66 @@ test('collectPortProcesses: 无匹配', () => {
   assert.equal(skipped, 0);
 });
 
+test('parsePortRange: 合法范围', () => {
+  assert.deepEqual(core.parsePortRange('8080-8090'), { start: 8080, end: 8090 });
+  assert.deepEqual(core.parsePortRange(' 8000 - 8100 '), { start: 8000, end: 8100 });
+  assert.deepEqual(core.parsePortRange('1-1000'), { start: 1, end: 1000 });
+  assert.deepEqual(core.parsePortRange('80~90'), { start: 80, end: 90 });
+});
+
+test('parsePortRange: 非法范围', () => {
+  assert.equal(core.parsePortRange('8080'), null);
+  assert.equal(core.parsePortRange('9000-8000'), null);
+  assert.equal(core.parsePortRange('0-100'), null);
+  assert.equal(core.parsePortRange('100-65536'), null);
+  assert.equal(core.parsePortRange('abc-def'), null);
+  assert.equal(core.parsePortRange('8080-'), null);
+  assert.equal(core.parsePortRange('-8090'), null);
+  assert.equal(core.parsePortRange(''), null);
+  assert.equal(core.parsePortRange(null), null);
+  assert.equal(core.parsePortRange(undefined), null);
+});
+
+test('parsePortRange: 超过单次最大数量', () => {
+  assert.equal(core.parsePortRange('1-65535'), null); // 65535 个 > MAX_RANGE_PORTS
+  assert.equal(core.parsePortRange('5000-6000'), null); // 1001 个 > 1000
+  assert.deepEqual(core.parsePortRange('5000-5999'), { start: 5000, end: 5999 }); // 恰好 1000 个
+});
+
+test('collectPortProcessesInRange: 收集范围内进程并按端口分行', () => {
+  const output = [
+    'TCP    0.0.0.0:8080    0.0.0.0:0    LISTENING    100',
+    'TCP    0.0.0.0:8081    0.0.0.0:0    LISTENING    100',
+    'TCP    0.0.0.0:9090    0.0.0.0:0    LISTENING    200',
+    'UDP    0.0.0.0:8080    *:*          300',
+    'TCP    0.0.0.0:8080    0.0.0.0:0    TIME_WAIT    0',
+  ].join('\n');
+  const { results, skipped } = core.collectPortProcessesInRange(output, 8080, 8085, {
+    '100': 'node.exe',
+    '300': 'svchost.exe',
+  });
+  // 同一 PID 100 占用 8080 与 8081 两个端口 → 两行；UDP 8080 一行
+  assert.equal(results.length, 3);
+  assert.equal(skipped, 1);
+  const ports = results.map((r) => r.port).sort();
+  assert.deepEqual(ports, ['8080', '8080', '8081']);
+  assert.equal(results.find((r) => r.port === '8081').name, 'node.exe');
+});
+
+test('collectPortProcessesInRange: 无匹配', () => {
+  const { results, skipped } = core.collectPortProcessesInRange('', 9000, 9100, {});
+  assert.deepEqual(results, []);
+  assert.equal(skipped, 0);
+});
+
+test('collectPortProcesses 结果包含 port 字段', () => {
+  const output = 'TCP    0.0.0.0:8080    0.0.0.0:0    LISTENING    100';
+  const { results } = core.collectPortProcesses(output, 8080, { '100': 'node.exe' });
+  assert.equal(results.length, 1);
+  assert.equal(results[0].port, '8080');
+});
+
 test('buildKillArgs', () => {
   assert.deepEqual(core.buildKillArgs(9999), ['taskkill', '/PID', '9999', '/F']);
 });
+

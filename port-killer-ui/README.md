@@ -1,6 +1,6 @@
 # 端口占用关闭工具 · 桌面版（Electron）
 
-界面好看的现代暗色主题桌面应用：输入端口号，查询并强制关闭占用该端口的进程。
+界面好看的现代桌面应用（深色 / 浅色主题可切换）：输入端口号或端口范围，查询并强制关闭占用对应端口的进程。
 与 `../port_killer.py`（tkinter 版）相互独立，本目录为 v2.0 新版。
 
 ## 运行
@@ -28,12 +28,14 @@ npm install
 
 ## 功能
 
-- 输入端口号（1~65535）或点击常用端口快捷按钮，回车/点击「查询占用」
-- 卡片式表格展示占用进程：PID、进程名、协议、本地地址、状态
+- 输入端口号（1~65535）或范围（如 `8080-8090`，最多 1000 个端口），回车/点击「查询占用」
+- 卡片式表格展示占用进程：PID、进程名、协议、本地地址、端口、状态
 - 勾选 / 全选 / 点击整行切换，一键「关闭选中进程」（`taskkill /PID /F`）
 - 二次确认弹窗 + Toast 结果反馈 + 加载动画
 - 权限不足时提示「以管理员身份重启」（UAC 提权）
 - 自动忽略 PID=0 的残留连接（TIME_WAIT 等）
+- 浅色 / 深色主题一键切换，默认跟随系统外观，选择自动记住
+- 应用内自动更新：启动后静默检查 GitHub Release，发现新版本可一键下载并重启安装（NSIS 安装版）
 
 ## 项目结构
 
@@ -43,17 +45,17 @@ npm install
 | `preload.js` | contextBridge 安全桥接，仅暴露最小 API |
 | `src/core.js` | 核心纯函数（解析 netstat/tasklist、端口校验） |
 | `src/index.html` | 界面结构 |
-| `src/style.css` | 暗色主题样式与动画 |
+| `src/style.css` | 深色 / 浅色双主题样式与动画 |
 | `src/renderer.js` | 界面交互逻辑 |
 | `test/core.test.js` | 核心逻辑单元测试 |
-| `scripts/verify.js` | Playwright 驱动 Electron 的 DOM 级界面验证 |
+| `scripts/verify.js` | Playwright 驱动 Electron 的 DOM 级界面验证（22 项检查） |
 | `scripts/screenshot.js` | 截图验证脚本（输出到 shots/） |
 
 ## 测试
 
 ```powershell
 npm test                 # 核心逻辑单元测试
-node scripts/verify.js   # 界面 DOM 验证（16 项检查）
+node scripts/verify.js   # 界面 DOM 验证（22 项检查）
 node scripts/screenshot.js  # 界面截图（shots/ 目录）
 ```
 
@@ -62,6 +64,12 @@ node scripts/screenshot.js  # 界面截图（shots/ 目录）
 - 强制结束进程（/F）不保存未保存的数据，请谨慎操作
 - 系统关键进程（如 PID 4 System）请勿关闭
 - 架构上渲染进程无 Node 权限，系统命令只在主进程执行
+
+## 自动更新
+
+- 打包版（NSIS 安装版 / macOS zip / Linux AppImage）启动约 6 秒后自动检查 GitHub Release 新版本
+- 发现新版本弹窗提示，下载过程显示进度，完成后一键重启安装
+- Windows 便携版与 Linux deb 版不支持自动更新（无安装器），界面不显示「检查更新」按钮
 
 ## 打包发布（Windows / macOS / Linux）
 

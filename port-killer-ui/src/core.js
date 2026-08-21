@@ -5,6 +5,7 @@
  */
 
 const MAX_PORT = 65535;
+const MAX_RANGE_PORTS = 1000; // 单次范围查询最大端口数
 
 /** 校验端口号：合法返回 1~65535 整数，否则返回 null */
 function validatePort(text) {
@@ -15,6 +16,18 @@ function validatePort(text) {
   if (!/^\d+$/.test(s)) return null;
   const n = Number(s);
   return n >= 1 && n <= MAX_PORT ? n : null;
+}
+
+/** 解析端口范围输入："8080-8090" / "8080~8090" -> { start, end }，非法或超出限制返回 null */
+function parsePortRange(text) {
+  const s = String(text == null ? '' : text).trim();
+  const m = /^(\d+)\s*[-~]\s*(\d+)$/.exec(s);
+  if (!m) return null;
+  const start = Number(m[1]);
+  const end = Number(m[2]);
+  if (start < 1 || end > MAX_PORT || start > end) return null;
+  if (end - start + 1 > MAX_RANGE_PORTS) return null;
+  return { start, end };
 }
 
 /** 从本地地址提取端口号：0.0.0.0:135 -> "135"，[::]:8080 -> "8080" */
@@ -112,6 +125,41 @@ function collectPortProcesses(netstatOutput, port, processNames) {
 
     results.push({
       pid: info.pid,
+      port: info.localPort,
+      name: (processNames && processNames[info.pid]) || '未知',
+      proto: info.proto,
+      localAddr: info.localAddr,
+      state: info.state || '—',
+    });
+  }
+  return { results, skipped };
+}
+
+/** 从 netstat 输出中收集 [start, end] 端口范围内的占用进程（每端口一行，不去重不同端口） */
+function collectPortProcessesInRange(netstatOutput, start, end, processNames) {
+  const results = [];
+  const seen = new Set();
+  let skipped = 0;
+
+  for (const line of String(netstatOutput).split(/\r?\n/)) {
+    const info = parseNetstatLine(line);
+    if (!info || info.localPort === null) continue;
+    const portNum = Number(info.localPort);
+    if (!(portNum >= start && portNum <= end)) continue;
+
+    // 范围模式下同一进程占用多个端口时分别展示，因此 key 包含端口
+    const key = `${info.pid}|${info.proto}|${info.localPort}|${info.state}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+
+    if (info.pid === '' || info.pid === '0') {
+      skipped += 1;
+      continue;
+    }
+
+    results.push({
+      pid: info.pid,
+      port: info.localPort,
       name: (processNames && processNames[info.pid]) || '未知',
       proto: info.proto,
       localAddr: info.localAddr,
@@ -128,11 +176,15 @@ function buildKillArgs(pid) {
 
 module.exports = {
   MAX_PORT,
+  MAX_RANGE_PORTS,
   validatePort,
+  parsePortRange,
   extractPort,
   parseNetstatLine,
   parseCsvLine,
   parseTasklistNames,
   collectPortProcesses,
+  collectPortProcessesInRange,
   buildKillArgs,
 };
+

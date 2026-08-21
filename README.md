@@ -6,7 +6,7 @@
 
 | 版本 | 技术栈 | 位置 | 说明 |
 | --- | --- | --- | --- |
-| Electron 版（推荐） | Electron + 原生 Web | `port-killer-ui/` | 现代暗色界面，当前正式版 v1.0.0 |
+| Electron 版（推荐） | Electron + 原生 Web | `port-killer-ui/` | 深色/浅色双主题，正式版 v1.0.0，v1.1.0 开发中 |
 | tkinter 版 | Python + tkinter | `port_killer.py` | 轻量单文件，无需安装依赖 |
 
 - 最新发布：[GitHub Release v1.0.0](https://github.com/TJ-Git-version/port-killer-ui/releases/tag/v1.0.0)
@@ -37,9 +37,11 @@ python port_killer.py
 
 ## 功能特性
 
-- 输入端口号或点击常用端口快捷按钮，实时查询占用进程（PID、进程名、协议、本地地址、状态）
+- 输入端口号（如 8080）或端口范围（如 8080-8090）实时查询占用进程（PID、进程名、协议、本地地址、端口、状态）
 - 勾选 / 全选 / 一键强制关闭，二次确认弹窗 + Toast 反馈 + 加载动画
 - 权限不足时一键「以管理员身份重启」（UAC 提权）
+- 深色 / 浅色主题一键切换（默认跟随系统外观）
+- 应用内自动更新（打包安装版）：发现新版本一键下载并重启安装
 - 自动忽略 PID=0 的残留连接（TIME_WAIT 等）
 - 系统命令仅在主进程执行，渲染进程无 Node.js 权限，安全隔离
 

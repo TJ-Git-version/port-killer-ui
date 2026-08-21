@@ -66,6 +66,7 @@ gh release create v1.0.0 dist\PortKiller-1.0.0-Setup-x64.exe dist\PortKiller-1.0
 
 ## 进阶建议
 
-- **自动更新**：引入 `electron-updater`，应用内检查 GitHub Release 新版本并静默更新（Windows NSIS / macOS zip 支持，Linux 需 deb/AppImage 配合）
+- **自动更新**：✅ 已接入 `electron-updater`（v1.1.0），NSIS 安装版支持应用内检查/下载/重启安装；便携版与 Linux deb 暂不支持
 - **代码签名**：正式分发前配置 Windows（Azure Trusted Signing / 商业证书）与 macOS（Apple Developer）签名，消除系统安全提示
 - **草稿发布**：将 `release.yml` 中 `draft` 改为 `true`，先审核再手动发布
+

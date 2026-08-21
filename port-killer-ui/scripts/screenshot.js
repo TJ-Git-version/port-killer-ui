@@ -17,6 +17,12 @@ const shot = (name) => path.join(appRoot, 'shots', name);
   await win.waitForLoadState('domcontentloaded');
   await win.waitForTimeout(900);
 
+  // 强制深色主题开始，保证截图稳定
+  await win.evaluate(() => { localStorage.setItem('portkiller-theme', 'dark'); });
+  await win.reload();
+  await win.waitForLoadState('domcontentloaded');
+  await win.waitForTimeout(900);
+
   // 1. 初始空状态
   await win.screenshot({ path: shot('01-empty.png') });
 
@@ -39,6 +45,21 @@ const shot = (name) => path.join(appRoot, 'shots', name);
   await win.screenshot({ path: shot('04-modal.png') });
   await win.click('#modalCancelBtn');
   await win.waitForTimeout(300);
+
+  // 4. 范围查询（135-136，仅查询）
+  await win.fill('#portInput', '135-136');
+  await win.click('#queryBtn');
+  await win.waitForTimeout(2000);
+  await win.screenshot({ path: shot('05-range.png') });
+  const rangeCount = await win.textContent('#resultCount');
+  console.log('range resultCount:', rangeCount);
+
+  // 5. 浅色主题
+  await win.click('#themeToggle');
+  await win.waitForTimeout(350);
+  await win.screenshot({ path: shot('06-light.png') });
+  const theme = await win.evaluate(() => document.documentElement.dataset.theme);
+  console.log('theme:', theme);
 
   const admin = await win.textContent('#adminBadge');
   console.log('adminBadge:', admin);

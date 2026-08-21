@@ -9,7 +9,7 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const { execFile, spawn } = require('child_process');
-const { validatePort, parseTasklistNames, collectPortProcesses } = require('./src/core');
+const { validatePort, parsePortRange, parseTasklistNames, collectPortProcesses, collectPortProcessesInRange } = require('./src/core');
 
 /** 执行系统命令，返回 { code, stdout, stderr } */
 function runCommand(cmd, args, maxBuffer = 4 * 1024 * 1024) {
@@ -68,6 +68,27 @@ ipcMain.handle('query-port', async (_event, portText) => {
   }
 });
 
+ipcMain.handle('query-port-range', async (_event, rangeText) => {
+  const range = parsePortRange(rangeText);
+  if (range === null) {
+    return { ok: false, error: '端口范围无效，请输入如 8080-8090（1~65535，范围不超过 1000 个端口）。' };
+  }
+  try {
+    const [netstatRes, tasklistRes] = await Promise.all([
+      runCommand('netstat', ['-ano']),
+      runCommand('tasklist', ['/FO', 'CSV', '/NH']),
+    ]);
+    if (netstatRes.code !== 0) {
+      return { ok: false, error: `netstat 执行失败（返回码 ${netstatRes.code}）：${netstatRes.stderr}` };
+    }
+    const names = parseTasklistNames(tasklistRes.stdout);
+    const { results, skipped } = collectPortProcessesInRange(netstatRes.stdout, range.start, range.end, names);
+    return { ok: true, start: range.start, end: range.end, results, skipped };
+  } catch (err) {
+    return { ok: false, error: `查询出错：${err.message}` };
+  }
+});
+
 ipcMain.handle('kill-process', async (_event, pid) => {
   const res = await runCommand('taskkill', ['/PID', String(pid), '/F']);
   const detail = (res.stderr || res.stdout || '').trim();
@@ -83,12 +104,98 @@ ipcMain.handle('kill-process', async (_event, pid) => {
   return { ok: false, code: 'error', message: `结束 PID ${pid} 失败（返回码 ${res.code}）：${detail}` };
 });
 
+ipcMain.handle('get-app-info', () => ({
+    version: app.getVersion(),
+    isPackaged: app.isPackaged,
+    updateSupported: isUpdateSupported(),
+  }));
+
 ipcMain.handle('is-admin', async () => ({ admin: await isAdmin() }));
 
 ipcMain.handle('relaunch-admin', () => {
   relaunchAsAdmin();
   return { ok: true };
 });
+
+ipcMain.handle('check-for-updates', async () => {
+  if (!autoUpdater) return { ok: false, error: '当前版本/环境不支持自动更新' };
+  try {
+    await autoUpdater.checkForUpdates();
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: `检查更新失败：${err.message}` };
+  }
+});
+
+ipcMain.handle('download-update', async () => {
+  if (!autoUpdater) return { ok: false, error: '自动更新不可用' };
+  try {
+    autoUpdater.downloadUpdate();
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: `下载更新失败：${err.message}` };
+  }
+});
+
+ipcMain.handle('install-update', () => {
+  if (!autoUpdater) return { ok: false, error: '自动更新不可用' };
+  setImmediate(() => autoUpdater.quitAndInstall(false, true));
+  return { ok: true };
+});
+
+// ---------------------------------------------------------------- 自动更新
+
+let autoUpdater = null;
+
+/** 当前环境是否支持应用内自动更新（仅打包版；便携版 / Linux deb 不支持） */
+function isUpdateSupported() {
+  if (!app.isPackaged) return false;
+  if (process.env.PORTABLE_EXECUTABLE_FILE) return false; // Windows 便携版无安装器
+  if (process.platform === 'linux' && !process.env.APPIMAGE) return false; // deb 版不支持
+  return true;
+}
+
+/** 向所有窗口广播更新事件 */
+function broadcastUpdate(payload) {
+  for (const win of BrowserWindow.getAllWindows()) {
+    win.webContents.send('update-event', payload);
+  }
+}
+
+/** 初始化 electron-updater（仅打包版生效） */
+function initAutoUpdater() {
+  if (!app.isPackaged) return;
+  const { autoUpdater: updater } = require('electron-updater');
+  autoUpdater = updater;
+  autoUpdater.autoDownload = false; // 由用户确认后再下载
+  autoUpdater.autoInstallOnAppQuit = true;
+
+  autoUpdater.on('checking-for-update', () => broadcastUpdate({ type: 'checking' }));
+  autoUpdater.on('update-available', (info) => broadcastUpdate({ type: 'available', version: info && info.version }));
+  autoUpdater.on('update-not-available', (info) => broadcastUpdate({ type: 'not-available', version: info && info.version }));
+  autoUpdater.on('download-progress', (p) =>
+    broadcastUpdate({
+      type: 'progress',
+      percent: Math.round((p && p.percent) || 0),
+      transferred: p && p.transferred,
+      total: p && p.total,
+    })
+  );
+  autoUpdater.on('update-downloaded', (info) => broadcastUpdate({ type: 'downloaded', version: info && info.version }));
+  autoUpdater.on('error', (err) => broadcastUpdate({ type: 'error', message: (err && err.message) || String(err) }));
+}
+
+/** 启动后静默检查一次更新 */
+function scheduleAutoCheck() {
+  if (!isUpdateSupported()) return;
+  setTimeout(() => {
+    try {
+      if (autoUpdater) autoUpdater.checkForUpdates();
+    } catch (err) {
+      console.error('auto update check failed:', err.message);
+    }
+  }, 6000);
+}
 
 // ---------------------------------------------------------------- 窗口
 
@@ -124,7 +231,9 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  initAutoUpdater();
   createWindow();
+  scheduleAutoCheck();
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
@@ -133,3 +242,4 @@ app.whenReady().then(() => {
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
+
