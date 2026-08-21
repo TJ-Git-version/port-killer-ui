@@ -106,3 +106,10 @@ npm run build:win
 采用「SemVer 版本号 + Git Tag + GitHub Release + CI 自动构建」规范流程，
 详见 [RELEASING.md](RELEASING.md)。推送 `v*` 标签后自动构建 Windows/macOS/Linux
 三平台安装包并发布到 GitHub Release（源码包由 GitHub 自动附带）。
+
+## 相关文档
+
+- 项目上下文交接文档：[`docs/PROJECT_CONTEXT.md`](../docs/PROJECT_CONTEXT.md)
+- 版本发布规范：[`RELEASING.md`](RELEASING.md)
+- 更新日志：[`CHANGELOG.md`](CHANGELOG.md)
+- 仓库总览与文档索引：[`README.md`](../README.md)
