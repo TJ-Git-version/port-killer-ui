@@ -77,6 +77,11 @@
     },
     "portable": {
       "artifactName": "${productName}-${version}-Portable-${arch}.${ext}"
+    },
+    "publish": {
+      "provider": "github",
+      "releaseType": "release"
     }
-  }
+  },
+  "repository": "https://github.com/TJ-Git-version/port-killer-ui"
 }

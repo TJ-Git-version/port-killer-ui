@@ -100,3 +100,9 @@ npm run build:win
 ```
 
 > 未配置代码签名证书，安装/运行时 Windows SmartScreen / macOS Gatekeeper 可能提示未知发布者，属正常现象。
+
+## 版本发布管理
+
+采用「SemVer 版本号 + Git Tag + GitHub Release + CI 自动构建」规范流程，
+详见 [RELEASING.md](RELEASING.md)。推送 `v*` 标签后自动构建 Windows/macOS/Linux
+三平台安装包并发布到 GitHub Release（源码包由 GitHub 自动附带）。
